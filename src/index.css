@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  min-height: 100%;
+  /* 首帧兜底跟着 token 走：夜间开关只在 index.html 里同步脚本切 .dark 类，
+     不存在"系统深色自动变黑"的意外；浅色默认、夜间跟 --background 深夜蓝 */
+  background-color: hsl(var(--background));
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* shadcn 基础层兜底: 没写显式 text-x / bg-x 的文字和表面 (textarea 输入文字、
+     placeholder、气泡正文) 从这里继承主题色, 不依赖 UA 默认色.
+     烧主题前 token 未定义时这两行按无效值优雅回退, 无副作用. */
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* 中英混排对齐:一行里英文(尤其 ds 的 display/像素字体如 Press Start 2P)和中文(系统黑体)
+   混在一起时,英文会偏小、偏上,跟中文对不齐。把纯英文/数字那一截用 <span className="cjk-latin">
+   包起来即可统一对齐:font-size-adjust 拉平字号,vertical-align 把英文下移到与中文同基线。
+   --cjk-latin-shift 由 design_picker 按 ds 烧进 :root(默认 -0.15em);极个别字体偏差大改这一个值。 */
+.cjk-latin {
+  font-size-adjust: 0.56;
+  vertical-align: var(--cjk-latin-shift, -0.15em);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 13%;
+    --card-foreground: 0 0% 13%;
+    --popover-foreground: 0 0% 13%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --secondary: 0 0% 97%;
+    --muted: 0 0% 97%;
+    --accent: 0 0% 97%;
+    --secondary-foreground: 0 0% 25%;
+    --accent-foreground: 0 0% 25%;
+    --muted-foreground: 0 0% 42%;
+    --border: 0 0% 87%;
+    --input: 0 0% 87%;
+    --primary: 336 100% 78%;
+    --ring: 336 100% 78%;
+    --primary-foreground: 336 55% 32%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive: 11 80% 42%;
+    --radius: var(--radius-md);
+
+    --space-1: 4px;
+    --space-12: 48px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-pill: 9999px;
+    --radius-sm: 8px;
+    --elev-flat: none;
+    --fg: hsl(var(--foreground));
+    --focus-ring: 0 0 0 2px var(--fg);
+    --elev-ring: 0 0 0 1px var(--border);
+    --text-2xl: 28px;
+    --text-3xl: 44px;
+    --text-4xl: 56px;
+    --text-base: 16px;
+    --text-lg: 20px;
+    --text-sm: 14px;
+    --text-xl: 22px;
+    --text-xs: 12px;
+    --leading-body: 1.43;
+    --leading-tight: 1.2;
+    --font-display: "Airbnb Cereal VF", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Airbnb Cereal App", Circular, -apple-system, system-ui, "Helvetica Neue", Roboto, sans-serif;
+    --font-body: "Airbnb Cereal VF", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Airbnb Cereal App", Circular, -apple-system, system-ui, "Helvetica Neue", Roboto, sans-serif;
+    --font-mono: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+    --cjk-latin-shift: -0.15em;
+  }
+
+  /* 深夜配色：靛蓝夜色打底，嫩粉继续当主角（夜里粉得更温柔） */
+  .dark {
+    color-scheme: dark;
+    --background: 250 30% 10%;
+    --foreground: 255 35% 92%;
+    --card-foreground: 255 35% 92%;
+    --popover-foreground: 255 35% 92%;
+    --card: 250 26% 15%;
+    --popover: 250 26% 15%;
+    --secondary: 250 22% 21%;
+    --muted: 250 22% 21%;
+    --accent: 250 22% 21%;
+    --secondary-foreground: 255 25% 85%;
+    --accent-foreground: 255 25% 85%;
+    --muted-foreground: 250 14% 66%;
+    --border: 250 18% 29%;
+    --input: 250 18% 29%;
+    --primary: 336 100% 78%;
+    --ring: 336 100% 78%;
+    --primary-foreground: 336 60% 18%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 72% 58%;
+    --radius: var(--radius-md);
+
+    --space-1: 4px;
+    --space-12: 48px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-pill: 9999px;
+    --radius-sm: 8px;
+    --elev-flat: none;
+    --fg: hsl(var(--foreground));
+    --focus-ring: 0 0 0 2px var(--fg);
+    --elev-ring: 0 0 0 1px var(--border);
+    --text-2xl: 28px;
+    --text-3xl: 44px;
+    --text-4xl: 56px;
+    --text-base: 16px;
+    --text-lg: 20px;
+    --text-sm: 14px;
+    --text-xl: 22px;
+    --text-xs: 12px;
+    --leading-body: 1.43;
+    --leading-tight: 1.2;
+    --font-display: "Airbnb Cereal VF", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Airbnb Cereal App", Circular, -apple-system, system-ui, "Helvetica Neue", Roboto, sans-serif;
+    --font-body: "Airbnb Cereal VF", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Airbnb Cereal App", Circular, -apple-system, system-ui, "Helvetica Neue", Roboto, sans-serif;
+    --font-mono: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+    --cjk-latin-shift: -0.15em;
+  }
+
+  body { font-family: var(--font-body); }
+
+  /* 中英混排: 把英文/数字那一截用 <span class="cjk-latin"> 包起来, 字号 + 基线对齐中文 (font-size-adjust 0.56 实测最贴中文字高) */
+  .cjk-latin { font-size-adjust: 0.56; vertical-align: var(--cjk-latin-shift, -0.15em); }
+}

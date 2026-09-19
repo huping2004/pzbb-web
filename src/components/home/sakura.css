@@ -1,0 +1,200 @@
+/* 樱花飘落 / 星星闪烁的柔和动效。
+   本文件只描述位移与透明度，所有颜色一律由 Tailwind token 类（text-primary 等）提供。 */
+
+@keyframes petal-fall {
+  0% {
+    transform: translate3d(0, -14vh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate3d(var(--petal-drift, 4vw), 46vh, 0) rotate(150deg);
+    opacity: 0.85;
+  }
+  88% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(0, 114vh, 0) rotate(310deg);
+    opacity: 0;
+  }
+}
+
+.petal-fall {
+  position: absolute;
+  top: 0;
+  animation-name: petal-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes soft-twinkle {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.12);
+  }
+}
+
+.soft-twinkle {
+  animation: soft-twinkle 4.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes soft-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12%);
+  }
+}
+
+.soft-bob {
+  animation: soft-bob 5s ease-in-out infinite;
+}
+
+/* 爱心 / 星星 / 音符 / 小气泡从页面底部缓缓升起，和飘落的樱花瓣一上一下呼应 */
+@keyframes float-up {
+  0% {
+    transform: translate3d(0, 12vh, 0) rotate(0deg) scale(0.9);
+    opacity: 0;
+  }
+  14% {
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate3d(var(--float-drift, 3vw), -112vh, 0) rotate(var(--float-spin, 24deg))
+      scale(1.05);
+    opacity: 0;
+  }
+}
+
+.float-up {
+  position: absolute;
+  bottom: 0;
+  animation-name: float-up;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+}
+
+/* 角落的巨型符号：极慢地转，像贴在背景上的二次元水印 */
+@keyframes slow-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.slow-spin {
+  animation: slow-spin 90s linear infinite;
+  will-change: transform;
+}
+
+/* 大颗 kira 闪光：一明一暗地放大旋转，比小星星更醒目 */
+@keyframes kira-pop {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.72) rotate(0deg);
+  }
+  45% {
+    opacity: 0.95;
+    transform: scale(1.22) rotate(22deg);
+  }
+}
+
+.kira-pop {
+  animation: kira-pop 6s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* 世界线变动：小窝状态卡片的故障抖动（老电视信号不稳那种错位感）。
+   只挂在卡片自己身上，页面其余部分不受影响。 */
+@keyframes worldline-glitch {
+  0%,
+  100% {
+    transform: translate(0, 0) skewX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  6% {
+    transform: translate(-9px, 3px) skewX(-4deg) rotate(-1.4deg) scale(1.03);
+    opacity: 0.72;
+  }
+  12% {
+    transform: translate(10px, -4px) skewX(3.4deg) rotate(1.6deg) scale(0.98);
+  }
+  18% {
+    transform: translate(-8px, -3px) skewX(-3deg) rotate(-1deg) scale(1.05);
+    opacity: 0.55;
+  }
+  24% {
+    transform: translate(8px, 4px) skewX(2.6deg) rotate(1deg) scale(0.97);
+  }
+  30% {
+    transform: translate(-6px, 2px) skewX(-2deg) rotate(-0.6deg) scale(1.02);
+    opacity: 0.8;
+  }
+  38% {
+    transform: translate(5px, -2px) skewX(1.6deg) rotate(0.5deg);
+  }
+  46% {
+    transform: translate(-4px, 1px) skewX(-1deg);
+    opacity: 0.65;
+  }
+  54% {
+    transform: translate(3px, -1px) skewX(0.8deg);
+  }
+  62% {
+    transform: translate(-2px, 0) skewX(-0.4deg);
+    opacity: 1;
+  }
+  72% {
+    transform: translate(0, 0) skewX(0);
+  }
+}
+
+.wl-glitch {
+  animation: worldline-glitch 0.6s steps(2, end) 3;
+}
+
+/* 故障期间的扫描线纱：颜色全部从主题变量取，跟整站主色走 */
+.wl-scan {
+  background-image: repeating-linear-gradient(
+    hsl(var(--primary) / 0.14) 0px,
+    hsl(var(--primary) / 0.14) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+.wl-glitch-text {
+  animation: worldline-glitch 0.6s steps(2, end) 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .petal-fall,
+  .soft-twinkle,
+  .soft-bob,
+  .float-up,
+  .slow-spin,
+  .kira-pop,
+  .wl-glitch,
+  .wl-glitch-text {
+    animation: none;
+  }
+}
