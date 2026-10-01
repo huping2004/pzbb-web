@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { CSSProperties } from "react"
 import { Moon, Sun } from "lucide-react"
 
 /* 深夜模式开关：平时是太阳，点一下变月亮、全站切深夜配色，再点回来。
@@ -98,10 +99,11 @@ export function DarkToggle({ editing }: { editing: boolean }) {
         setDark((v) => !v)
       }}
       title={editing ? "按住可以拖到任意位置" : dark ? "点一下换回白天" : "点一下换深夜"}
-      className={`fixed z-[110] flex h-12 w-12 items-center justify-center rounded-full bg-card/85 text-primary shadow-lg ring-1 ring-primary/30 backdrop-blur-md transition-transform duration-300 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+      data-intro-ui=""
+      className={`intro-ui fixed z-[110] flex h-12 w-12 items-center justify-center rounded-full bg-card/85 text-primary shadow-lg ring-1 ring-primary/30 backdrop-blur-md transition-transform duration-300 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         editing ? "cursor-grab touch-none active:cursor-grabbing" : ""
       }`}
-      style={{ left: pos.x, top: pos.y }}
+      style={{ left: pos.x, top: pos.y, "--ui-d": 0.45 } as CSSProperties}
     >
       {dark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
     </button>

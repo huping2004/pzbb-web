@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# 开发平台运行时的内部目录（与页面本身无关，不用进仓库）
+.rh/
+.rh_attachments/
+project/
+templates/
+.vibex-app-type
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,8 +29,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# VibeX platform local files
-.vibex/
-vibex-local/
-*.zip

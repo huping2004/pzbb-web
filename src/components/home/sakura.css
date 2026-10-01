@@ -186,6 +186,166 @@
   animation: worldline-glitch 0.6s steps(2, end) 3;
 }
 
+/* ── 启动动画 · 飞入（花里胡哨版）──────────────────────────────────
+   节奏约 9 秒：开场背景是 2 倍特写、由内向外扩开露出全貌（0.75 秒）→ 0.5 秒起功能模块
+   错峰从顶部下落（页脚从下沿上托）、颜色由淡到深（各 1.15 秒匀速）→ 1.8 秒起网站卡片和分栏标题
+   陆续从四面八方飞回原位，错峰拉满 0~2.8 秒、路程 2.2~3.5 秒全随机——
+   约一成半沿途带着整圈旋转，其余本分直飞/弧线，
+   还有的两三倍大小压过来边飞边缩，乱中有序地陆续落定。
+   每块的轨迹/速度/大小/出场曲线都来自 lib/intro.ts 摇的随机变量；
+   绕圈、翻滚这类复杂轨迹的帧是当场生成的（animation-name 指过去）。
+   标记类挂在 <html> 上；类名平时就在元素上，没选飞入动画（html 没标记）
+   时这里整段一条都不生效，页面零影响。 */
+/* 飞的起点在屏幕外：横向用 clip 裁掉（clip 不生成滚动容器，不会撑出横向滚动条），
+   纵向完全不锁——动画期间想怎么滑怎么滑，各块照各自的时序继续演 */
+.intro-fly {
+  overflow-x: clip;
+}
+.intro-fly .intro-ui {
+  animation: intro-ui-in 1.15s linear both;
+  /* 各块错峰淡入：--ui-d 是每块自己的先后（0 打头，最晚的约 0.95 秒开始） */
+  animation-delay: calc(0.5s + var(--ui-d, 0) * 0.5s);
+}
+/* 背景定场：开场画面是 2 倍特写（屏幕只装得下一半内容），0.75 秒里
+   由内向外缓缓扩开——倍数从 2 缩回 1，整幅背景越让越多，直到完整露出 */
+.intro-fly .intro-bg {
+  animation: intro-bg-settle 0.75s ease-out both;
+}
+@keyframes intro-bg-settle {
+  from {
+    transform: scale(2);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+/* 功能模块：从界面外落进来——起点整体抬起「自己离屏幕顶沿的距离+身高+一点余量」
+   （--ui-drop 由主页开场时逐块实测写入，见 HomePage），保证起势正好贴着屏幕
+   顶沿外：一启动就看得见在落，而不是先在一整屏外空飞大半秒（那会在背景
+   定场结束后留下零点几秒的空窗）；下落同时颜色从淡到深，匀速 1.15 秒不缓冲。
+   （transform 向上越界不会撑出滚动条，不用担心页面变高；测不到时兜底整屏抬） */
+@keyframes intro-ui-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--ui-drop, calc(-100vh - 100%)));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* 页脚同款登场但方向反过来：它平时贴在页面最底下，从屏幕下沿往上托回
+   自己的位置才顺眼（--ui-rise 同样由主页开场时实测写入，起点贴着屏幕底沿外） */
+.intro-fly .intro-ui.intro-ui-up {
+  animation-name: intro-ui-rise;
+}
+@keyframes intro-ui-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--ui-rise, calc(100vh + 100%)));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.intro-fly .intro-site {
+  /* 出场方式抽签结果（见 lib/intro.ts）：默认是下面的弧线直飞，
+     摇中"花活"的指向当场生成的绕圈/翻滚帧 */
+  animation-name: var(--intro-anim, intro-site-in);
+  /* 每块自己的路程时长（0.7~3.4 秒随机）——快慢不一才像各自赶路 */
+  animation-duration: var(--intro-dur, 0.9s);
+  /* 每块自己的速度曲线：有的稳稳减速、有的冲过头弹一下 */
+  animation-timing-function: var(--intro-ease, cubic-bezier(0.34, 1.56, 0.64, 1));
+  animation-fill-mode: both;
+  /* 出发时刻 = 1.8 秒 + 自己摇到的 0~2.8 秒迟滞（--intro-x 见 lib/intro.ts），
+     不规律、不设整点——像噼里啪啦陆续到位，而不是排队报到 */
+  animation-delay: calc(1.8s + var(--intro-x, 0) * 2.8s);
+}
+@keyframes intro-site-in {
+  from {
+    /* 起点大小随机：多半是小着飘进来，摇中"巨物"的以两三倍体型压境、沿途缩回正常 */
+    opacity: 0;
+    transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0deg)) scale(var(--fs, 0.6));
+  }
+  50% {
+    /* 中途踩一脚侧偏（--fmx/--fmy 随机方向但幅度收小），直线变弧线；
+       落点前小幅过冲（--fso），到位有一下弹住的手感。
+       拐点放一半的位置：后半程全程都在朝自己家收敛，不会停在半空磨蹭 */
+    opacity: 1;
+    transform: translate(var(--fmx, 0px), var(--fmy, 0px)) scale(calc(1 + var(--fso, 0.1)));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* 落位星光：每块飞完那一刻（自己的起飞时刻 + 自己的路程时长 + 一点缓冲）
+   在身上闪一朵粉色光晕再散去——三个变量和飞行同一套随机数，逐块严丝合缝 */
+.intro-fly .intro-site::after,
+.intro-solo::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 20px;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 25% 20%, hsl(var(--primary) / 0.55), transparent 55%),
+    radial-gradient(circle at 80% 75%, hsl(var(--primary) / 0.4), transparent 50%);
+  animation: intro-star-flash 0.55s ease-out both;
+  animation-delay: calc(1.8s + var(--intro-x, 0) * 2.8s + var(--intro-dur, 0.9s) + 0.1s);
+}
+/* 新来的成员单独飞：开场大合演早演完了，中途新添加的网站/新分栏照样
+   带着自己摇到的随机轨迹飞入+闪星光（动画变量挂载时已摇好，见 lib/intro.ts）；
+   只有选了飞入动画才会被标上这个类，默认动画下新加的照常直接出现 */
+.intro-solo {
+  animation-name: var(--intro-anim, intro-site-in);
+  animation-duration: var(--intro-dur, 0.9s);
+  animation-timing-function: var(--intro-ease, cubic-bezier(0.34, 1.56, 0.64, 1));
+  animation-fill-mode: both;
+  animation-delay: 0.15s;
+}
+.intro-solo::after {
+  animation-delay: calc(0.15s + var(--intro-dur, 0.9s) + 0.1s);
+}
+@keyframes intro-star-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+/* 开场粉雾：起幕时蒙着一层粉色光纱，1.4 秒里慢慢散去露出真容；
+   不演的时候它本来就完全透明，平时零存在 */
+.intro-mist {
+  position: fixed;
+  inset: 0;
+  z-index: 102;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(120% 90% at 50% 10%, hsl(var(--primary) / 0.28), transparent 70%),
+    hsl(var(--primary) / 0.1);
+}
+.intro-fly .intro-mist {
+  animation: intro-mist-out 1.4s ease-out both;
+}
+@keyframes intro-mist-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .petal-fall,
   .soft-twinkle,
@@ -197,4 +357,16 @@
   .wl-glitch-text {
     animation: none;
   }
+}
+
+/* 启动动画不吃「系统减弱动态效果」开关：这是主人特意挑的开场，
+   预览内嵌浏览器默认报"要减弱"，跟着关就把整套开场全部演不出来 */
+.intro-fly .intro-ui,
+.intro-fly .intro-site,
+.intro-fly .intro-site::after,
+.intro-fly .intro-mist,
+.intro-fly .intro-bg,
+.intro-solo,
+.intro-solo::after {
+  animation-play-state: running;
 }

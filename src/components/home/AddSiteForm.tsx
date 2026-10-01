@@ -17,12 +17,15 @@ export function AddSiteForm({
   open,
   onOpenChange,
   defaultGroup,
+  extraGroups,
   onAdd,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   /* 从哪个分类旁边的「添加」点进来，就预置哪个分类 */
   defaultGroup: string
+  /* 自己新建的分栏：也进这个下拉（预置栏之外的） */
+  extraGroups?: { id: string; title: string }[]
   onAdd: (siteName: string, url: string, group: string, icon?: string) => boolean
 }) {
   const [displayName, setDisplayName] = useState("")
@@ -164,7 +167,7 @@ export function AddSiteForm({
             >
               {/* 收藏栏也能直接收个人网址：它没有原分组，取消收藏即删除 */}
               <option value="fav">收藏栏（取消收藏即删除）</option>
-              {GROUPS.map((g) => (
+              {[...GROUPS, ...(extraGroups ?? [])].map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.title}
                 </option>

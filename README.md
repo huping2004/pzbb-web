@@ -1,73 +1,45 @@
-# React + TypeScript + Vite
+# 平子爸爸的Home
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个个人的导航主页：常用网站分栏收藏、一键批量打开、多引擎搜索带联想词和搜索历史，背景、主题色、深夜模式都能随心换。所有数据（收藏、勾选、位置、记录）都存在浏览器本地，不依赖任何后端账号。
 
-Currently, two official plugins are available:
+## 功能一览
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **网站分栏管理**：预置 7 组常用站点，可添加自己的网站、改名、换图标、拖拽排序、跨栏搬家
+- **收藏栏 + 一键打开**：收藏喜欢的站点；在「一键打开」里勾选想要的站点（一个都没勾就全开收藏），被勾选的卡片右上角有小书签标记
+- **搜索中心**：必应 / Google / Google搜图 / Yandex / 百度 五引擎切换；输入时实时联想、命中自己的网站可直接打开；小钟表按钮查看最近搜索（自动保留 30 天，可单删/清空）
+- **更改模式**：就地改名、编辑、删除（回收站可找回，删除满一个月自动清理）
+- **个性化**：多套背景 + 自定义上传背景、主题色、深夜模式；时间/天气悬浮胶囊可拖到页面任意角落
+- **备份与恢复**：一键导出/导入全部本地数据
 
-## React Compiler
+## 技术栈
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+React 19 + TypeScript + Vite + Tailwind CSS + shadcn/ui，纯前端应用。
 
-## Expanding the ESLint configuration
+## 本地运行
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install     # 或 pnpm install
+npm run dev     # 开发模式
+npm run build   # 构建产物在 dist/
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 部署
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`dist/` 是纯静态文件，扔到任意静态托管即可（GitHub Pages、Vercel、Nginx 等）。
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+> 注意：应用使用了前端路由（React Router）。部署到子路径（如 GitHub Pages 项目页）时，需要把 `vite.config.ts` 里的 `base` 设为对应路径，并把 `src/main.tsx` 中 `BrowserRouter` 的 `basename` 设为同一路径；静态托管还要配置 404 回退到 `index.html`，否则刷新子页面会 404。
+
+## 目录结构
+
 ```
+src/
+├── pages/Home/        # 主页（逻辑 useHome + 视图 HomePage）
+├── pages/Trash/       # 回收站页
+├── components/home/   # 首页各部件（卡片、搜索面板、悬浮模块…）
+├── components/ui/     # shadcn/ui 基础组件
+└── lib/               # 搜索联想等工具
+```
+
+## 源码下载
+
+页面左侧导航栏内置「源码下载」，可打包下载全部源代码。

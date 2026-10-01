@@ -1,6 +1,7 @@
-import { useRef, useState } from "react"
-import { Flame, Pencil, Trash2 } from "lucide-react"
+import { useMemo, useRef, useState } from "react"
+import { Bookmark, Flame, Pencil, Trash2 } from "lucide-react"
 import { HeartIcon } from "@/components/home/DecorIcons"
+import { flyVars } from "@/lib/intro"
 import type { Site } from "@/pages/Home/useHome"
 
 /* 每张卡片都给一朵粉色小圆标，整片网格看起来是粉粉的一片 */
@@ -68,11 +69,15 @@ export function SiteCard({
   heatCount,
   dragged,
   dropOver,
+  markMode,
+  marked,
+  onToggleMark,
   onBeginDrag,
   onRemove,
   onToggleFavorite,
   onOpen,
   onEdit,
+  solo,
 }: {
   site: Site
   index: number
@@ -84,6 +89,11 @@ export function SiteCard({
   dragged: boolean
   /* 拖拽中的鼠标正悬在这张卡上（它会被让出位置） */
   dropOver: boolean
+  /* 「一键打开」挑名单模式：这点卡片=勾/取消勾，不打开也不开编辑窗 */
+  markMode: boolean
+  /* 这张卡已勾进「一键打开」名单（右上角冒小书签） */
+  marked: boolean
+  onToggleMark: (site: Site) => void
   /* 编辑模式下按住卡片挪动一下 = 开始拖（由页面接管后续跟踪与落点；连起点坐标一起交出去） */
   onBeginDrag: (site: Site, x: number, y: number) => void
   onRemove: (site: Site) => void
@@ -92,6 +102,8 @@ export function SiteCard({
   onOpen: (site: Site) => void
   /* 管理模式下点卡片 = 打开编辑窗口 */
   onEdit: (site: Site) => void
+  /* 这张卡是刚新添加的：飞入动画下单独飞入登场一次 */
+  solo: boolean
 }) {
   const tone = AVATAR_TONES[index % AVATAR_TONES.length]
   const initial = site.name.trim().charAt(0).toUpperCase()
@@ -99,7 +111,8 @@ export function SiteCard({
   const suppressClick = useRef(false)
 
   const beginDragGesture = (e: React.PointerEvent) => {
-    if (!editing || e.button !== 0) return
+    /* 挑名单模式里不兴拖——点一下就是勾/取消勾，别把卡片拖走 */
+    if (!editing || markMode || e.button !== 0) return
     const startX = e.clientX
     const startY = e.clientY
     const cleanup = () => {
@@ -137,12 +150,25 @@ export function SiteCard({
     </>
   )
 
+  /* 飞入动画的起点：这张卡自己摇一个方向，平时（没选飞入动画）毫无作用 */
+  const flyStyle = useMemo(flyVars, [])
+
   return (
     <div
-      className="group relative"
+      className={`${solo ? "intro-solo" : "intro-site"} group relative`}
+      style={flyStyle}
       /* 落点识别标记：页面拖拽时靠这个属性知道鼠标正悬在哪张卡上 */
       data-site-card={site.id}
     >
+      {/* 勾进「一键打开」名单的：右上角一颗小书签，和小火苗同款角落徽章 */}
+      {marked ? (
+        <span
+          title="已加入「一键打开」名单"
+          className="absolute -right-1.5 -top-1.5 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow ring-2 ring-background"
+        >
+          <Bookmark className="h-3 w-3 fill-current" />
+        </span>
+      ) : null}
       {/* 点得多了冒一朵小火苗：次数越多说明越常用 */}
       {heatCount >= 3 ? (
         <span
@@ -158,15 +184,23 @@ export function SiteCard({
           type="button"
           onPointerDown={beginDragGesture}
           onClick={() => {
+            if (markMode) {
+              onToggleMark(site)
+              return
+            }
             if (suppressClick.current) {
               suppressClick.current = false
               return
             }
             onEdit(site)
           }}
-          title={`点编辑「${site.name}」，按住挪动可拖到想要的位置`}
+          title={
+            markMode
+              ? `点一下把「${site.name}」加进／移出「一键打开」名单`
+              : `点编辑「${site.name}」，按住挪动可拖到想要的位置`
+          }
           /* touch-none：手机上按住卡片能拖动，而不是把页面划走 */
-          className={`cursor-grab touch-none active:cursor-grabbing ${faceClass}`}
+          className={`${markMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} touch-none ${faceClass}`}
         >
           {faceInner}
         </button>
@@ -175,7 +209,15 @@ export function SiteCard({
           href={site.url}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => onOpen(site)}
+          onClick={(e) => {
+            /* 挑名单模式：点卡片是勾/取消勾，不是打开网页 */
+            if (markMode) {
+              e.preventDefault()
+              onToggleMark(site)
+              return
+            }
+            onOpen(site)
+          }}
           draggable={false}
           className={faceClass}
         >
@@ -183,14 +225,18 @@ export function SiteCard({
         </a>
       )}
 
-      {/* 鼠标移到卡片上，右边冒出爱心：点一下收进「收藏」栏，再点一下放回去 */}
+      {/* 爱心常显：收藏着的永远亮着粉；但只有更改模式里才点得动，平时浏览不让误点 */}
       <button
         type="button"
         aria-label={favorited ? `取消收藏 ${site.name}` : `收藏 ${site.name}`}
         aria-pressed={favorited}
+        disabled={!editing}
+        title={editing ? (favorited ? "点一下取消收藏" : "点一下收进收藏") : "进「更改设置」才能收藏或取消收藏"}
         onClick={() => onToggleFavorite(site.id)}
-        /* 手机没有"鼠标移到卡片上"这回事：小屏上爱心常显，直接点 */
-        className={`absolute right-2.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-300 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+        /* 手机没有"鼠标移到卡片上"这回事：小屏上爱心常显 */
+        className={`absolute right-2.5 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          editing ? "cursor-pointer hover:bg-primary/10" : "cursor-default"
+        } ${
           favorited
             ? "text-primary opacity-100"
             : "text-primary/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
@@ -199,8 +245,8 @@ export function SiteCard({
         <HeartIcon className="h-4 w-4" />
       </button>
 
-      {/* 管理模式下每张卡片右上角都挂一个垃圾桶，点一下删掉 */}
-      {editing ? (
+      {/* 管理模式下每张卡片右上角都挂一个垃圾桶，点一下删掉；挑名单模式先收起（和书签挤同一个角） */}
+      {editing && !markMode ? (
         <button
           type="button"
           aria-label={`删除 ${site.name}`}

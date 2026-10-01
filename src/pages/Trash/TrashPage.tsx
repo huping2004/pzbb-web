@@ -18,8 +18,8 @@ export function TrashPage(p: ReturnType<typeof useTrash>) {
               <StarIcon className="kira-pop h-6 w-6 text-primary/40" />
             </h1>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              在「更改设置」里删掉的网站都先住在这里——点「找回」就回到原来的分组，收藏过的回来还在收藏栏；
-              真不需要了就「彻底删」或一键清空。
+              在「更改设置」里删掉的网站都先住在这里——点「找回」就回到原来的分组，收藏栏里删的回来也还在收藏栏；
+              找回后这里还留一份，随时能再找；真不需要了就「彻底删」或一键清空，留着不管的话删满一个月会自动清掉。
             </p>
             <Link
               to="/"
@@ -39,7 +39,7 @@ export function TrashPage(p: ReturnType<typeof useTrash>) {
 
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <HeartIcon className="h-3.5 w-3.5 text-primary/50" />
-            找回一个就少一个，回收站只留还没拿走的。
+            找回不占用：拿回去后这里还留一份，删满一个月才会自动清掉。
           </p>
         </section>
       </main>

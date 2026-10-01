@@ -1,11 +1,30 @@
 import { useState } from "react"
-import { Archive, Home, Palette, Settings, Trash2 } from "lucide-react"
+import { Archive, Check, Home, Palette, Settings, Sparkles, Trash2 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { StarIcon } from "@/components/home/DecorIcons"
 import { BackupDialog } from "@/components/layout/BackupDialog"
 import { SideNavBrand } from "@/components/layout/SideNavBrand"
 import { SideNavItem } from "@/components/layout/SideNavItem"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { readIntroMode, saveIntroMode } from "@/lib/intro"
+import type { IntroMode } from "@/lib/intro"
+
+/* 启动动画的两档：default 是页面本来的样子，flyin 是「先见背景→功能淡入→网站飞入」 */
+const INTRO_OPTIONS: { id: IntroMode; label: string; desc: string }[] = [
+  { id: "default", label: "默认动画", desc: "页面本来的样子：打开时各块内容原地轻轻浮现，直接进入。" },
+  {
+    id: "flyin",
+    label: "飞入动画",
+    desc: "开场背景从 2 倍特写由内向外缓缓扩开、露出全貌，功能模块从顶上陆续落下、越落越实，页面最底下的页脚从下沿往上托回位置；随后网站卡片从四面八方陆续飞回原位——有的两秒多就落定、有的慢悠悠飞满三秒半，约一成半沿途转着圈进来，还有的两三倍大小压过来边飞边缩；分栏标题简单利落直接归位。全程约九秒，每次演得都不一样；中途新添加的网站和新分类栏也会飞进来。",
+  },
+]
 
 /* 侧栏里的页面清单：现在只有 Home 一页，以后长出来的新页面往这里排 */
 const NAV_ITEMS: { id: string; label: string; hint: string; path: string; icon: LucideIcon }[] = [
@@ -18,6 +37,9 @@ export function SideNav() {
   const [backupOpen, setBackupOpen] = useState(false)
   /* 刚点完「更改设置」时鼠标还压在侧栏上，先按住不让它展开，等鼠标离开左边缘再恢复"靠近才滑出" */
   const [dismissed, setDismissed] = useState(false)
+  /* 启动动画选择弹窗：选好一项就广播给主页当场彩排一遍 */
+  const [introOpen, setIntroOpen] = useState(false)
+  const [introMode, setIntroMode] = useState<IntroMode>(() => readIntroMode())
   const navigate = useNavigate()
   const { pathname, search } = useLocation()
   /* 「更改设置」走地址上的 edit=1：点一下回主页并让卡片露出垃圾桶，再点一下收工 */
@@ -38,7 +60,8 @@ export function SideNav() {
 
   return (
     <div
-      className="group fixed left-0 top-0 z-50 h-full w-8"
+      data-intro-ui=""
+      className="intro-ui group fixed left-0 top-0 z-50 h-full w-8"
       onMouseLeave={() => setDismissed(false)}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDismissed(false)
@@ -89,6 +112,16 @@ export function SideNav() {
           </p>
         </div>
 
+        {/* 换背景上面是启动动画：进网站那两秒怎么演，在这里挑 */}
+        <button
+          type="button"
+          onClick={() => setIntroOpen(true)}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-card/80 px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors duration-300 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <Sparkles className="h-4 w-4" />
+          启动动画
+        </button>
+
         {/* 设置入口上面是换背景：点了回主页并把背景面板弹出来 */}
         <button
           type="button"
@@ -121,6 +154,51 @@ export function SideNav() {
       </div>
 
       <BackupDialog open={backupOpen} onOpenChange={setBackupOpen} />
+
+      {/* 启动动画选择：点一档立刻存好并在当前页彩排一遍 */}
+      <Dialog open={introOpen} onOpenChange={setIntroOpen}>
+        <DialogContent className="rounded-3xl bg-card shadow-xl ring-1 ring-primary/20 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
+              <Sparkles className="h-5 w-5 text-primary" />
+              启动动画
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              打开网站开场的几秒想怎么亮相？点一档马上给你演一遍。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {INTRO_OPTIONS.map((opt) => {
+              const active = introMode === opt.id
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    setIntroMode(opt.id)
+                    saveIntroMode(opt.id)
+                    setIntroOpen(false)
+                  }}
+                  className={`rounded-2xl border p-4 text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                    active
+                      ? "border-primary bg-primary/10 shadow-sm"
+                      : "border-primary/20 bg-card/60 hover:border-primary/50 hover:bg-primary/5"
+                  }`}
+                >
+                  <span className="flex items-center justify-between gap-2 text-sm font-bold text-foreground">
+                    {opt.label}
+                    {active ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
+                  </span>
+                  <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                    {opt.desc}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
+import { readIntroMode } from "@/lib/intro"
+import { getSuggestions } from "@/lib/suggest"
 
 export type EngineId = "bing" | "google" | "google-img" | "yandex" | "baidu"
 
@@ -146,11 +148,40 @@ const LS_TITLE = "navhub.title"
 const LS_GROUP_TITLES = "navhub.group.titles"
 /* 分栏自己的上下顺序（编辑模式里用小箭头调）：存一栏 id 的排列，没调过用默认顺序 */
 const LS_GROUP_ORDER = "navhub.group.order"
+/* 自己新建的分栏（预置栏之外的）：{id,title} 清单；栏里的网站照常存在各站点的 group 上 */
+const LS_GROUP_CUSTOM = "navhub.group.custom"
 /* 旧版"顶上槽放哪个模块"的存档（已被自由拖拽位置取代，只拿来继承当年的左右顺序） */
 const LS_TOP_MODULE = "navhub.layout.topmod"
 
 /* 放行教程弹窗里点过「不再显示」，以后被拦也不再弹 */
 const LS_POPUP_HELP_OFF = "navhub.popuphelp.off"
+/* 「一键打开」的自选清单：存勾选过的站点 id；一个都没勾就照旧全开收藏 */
+const LS_OPEN_LIST = "navhub.open.list"
+
+/* 最近搜索：每真搜一次记一条，同一个词去重挪到最前；满 30 天的自动清掉 */
+const LS_SEARCH_HIST = "navhub.search.history"
+const SEARCH_HIST_TTL = 30 * 24 * 60 * 60 * 1000
+
+/* engine 是后加的字段：老记录没有就正常显示，只是不标引擎 */
+export type SearchHistoryItem = { q: string; at: number; engine?: EngineId }
+
+/* 读历史时顺手做新鲜度过滤：过期词直接请出去，留下的写回去 */
+function readFreshSearchHistory(): SearchHistoryItem[] {
+  const all = readStored<SearchHistoryItem[]>(LS_SEARCH_HIST, [])
+  const now = Date.now()
+  const fresh = all
+    .filter(
+      (x) =>
+        x &&
+        typeof x.q === "string" &&
+        x.q.trim() !== "" &&
+        typeof x.at === "number" &&
+        now - x.at < SEARCH_HIST_TTL,
+    )
+    .slice(0, 100)
+  if (fresh.length !== all.length) writeStored(LS_SEARCH_HIST, fresh)
+  return fresh
+}
 
 export type ModId = "clock" | "weather"
 export type ModPos = { x: number; y: number }
@@ -300,6 +331,16 @@ function readRecentToday(): Site[] {
   return stored.sites
 }
 
+/* 回收站长期保存：删掉满 30 天的条目自动清掉；每次打开页面先过滤一遍并写回 */
+const TRASH_TTL_MS = 30 * 24 * 60 * 60 * 1000
+export function readFreshTrash(): TrashedEntry[] {
+  const all = readStored<TrashedEntry[]>(LS_TRASH, [])
+  if (!Array.isArray(all)) return []
+  const fresh = all.filter((t) => Date.now() - t.deletedAt < TRASH_TTL_MS)
+  if (fresh.length !== all.length) writeStored(LS_TRASH, fresh)
+  return fresh
+}
+
 /* 手机拍的大图直接转 dataURL 会撑爆浏览器的小仓库：超大或超尺寸的图先等比缩到最长边 1920
    再存（背景层是 bg-cover，缩放后看不出差别），小图原样保留。 */
 const BG_MAX_SIDE = 1920
@@ -387,7 +428,7 @@ export function useHome() {
   const [themeHex, setThemeHexState] = useState<string | null>(() =>
     readStored<string | null>(LS_THEME, null),
   )
-  const [trash, setTrash] = useState<TrashedEntry[]>(() => readStored<TrashedEntry[]>(LS_TRASH, []))
+  const [trash, setTrash] = useState<TrashedEntry[]>(() => readFreshTrash())
   /* 今天打开过的网站：同网站只留一条，最近打开的排最前 */
   const [recent, setRecent] = useState<Site[]>(readRecentToday)
   /* 预置站点的改名/改址覆盖表；正在编辑的那张卡片 */
@@ -413,6 +454,18 @@ export function useHome() {
   const [groupOrder, setGroupOrderState] = useState<string[]>(() =>
     readStored<string[]>(LS_GROUP_ORDER, []),
   )
+  /* 自己新建的分栏清单（排在预置栏之后，照样能改名/调序） */
+  const [customGroups, setCustomGroups] = useState<GroupDef[]>(() =>
+    readStored<GroupDef[]>(LS_GROUP_CUSTOM, []),
+  )
+  /* 飞入动画模式下"刚新加进来"的成员（网站/分栏）：它们单独飞入一次，
+     只在本次浏览有效，不用存盘 */
+  const [soloIds, setSoloIds] = useState<string[]>([])
+  const markSolo = useCallback((id: string) => {
+    /* 没选飞入动画就什么都不标：默认动画下新加的东西照常直接出现 */
+    if (readIntroMode() !== "flyin") return
+    setSoloIds((prev) => [...prev, id])
+  }, [])
 
   const saveGroupTitle = useCallback(
     (groupId: string, title: string) => {
@@ -502,7 +555,8 @@ export function useHome() {
     }
     /* 收藏是"搬走"不是"抄一份"：收了就从原分组消失，只在收藏栏显示，取消收藏再搬回去 */
     const favorites = allSites.filter((s) => favoriteIds.includes(s.id))
-    const base = GROUPS.map((g) => ({
+    /* 预置栏之后接上自己新建的栏：改名、调序、往里加站/拖站全都一样用 */
+    const base = [...GROUPS, ...customGroups].map((g) => ({
       ...g,
       /* 编辑模式里改过分栏名的用改后的，没改过用原名 */
       title: groupTitles[g.id] ?? g.title,
@@ -522,7 +576,7 @@ export function useHome() {
     return [...sections].sort(
       (a, b) => (gpos.get(a.id) ?? groupOrder.length) - (gpos.get(b.id) ?? groupOrder.length),
     )
-  }, [customSites, hiddenSiteIds, favoriteIds, siteEdits, siteOrders, groupTitles, groupOrder])
+  }, [customSites, hiddenSiteIds, favoriteIds, siteEdits, siteOrders, groupTitles, groupOrder, customGroups])
 
   /* 编辑模式里点小箭头：把某一栏和上/下一栏对调（按当前显示的顺序找邻居） */
   const moveGroupSection = useCallback(
@@ -539,6 +593,32 @@ export function useHome() {
       setGroupOrderState(next)
     },
     [groups],
+  )
+
+  /* 更改模式下新建分栏：先起个「新分类」的占位名（重名自动编号），
+     建好就地用铅笔改名字；新栏自带一次飞入登场 */
+  const addGroup = useCallback(() => {
+    const taken = new Set([...GROUPS, ...customGroups].map((g) => groupTitles[g.id] ?? g.title))
+    let title = "新分类"
+    for (let i = 2; taken.has(title); i += 1) title = `新分类 ${i}`
+    const group: GroupDef = { id: "cg" + Date.now().toString(36), title }
+    const next = [...customGroups, group]
+    if (!writeStored(LS_GROUP_CUSTOM, next)) return
+    setCustomGroups(next)
+    markSolo(group.id)
+  }, [customGroups, groupTitles, markSolo])
+
+  /* 拆掉自己建的分栏：只限空栏——里面还有网站就拆不了，免得网站跟着凭空没去处 */
+  const removeGroup = useCallback(
+    (groupId: string) => {
+      if (!groupId.startsWith("cg")) return
+      const section = groups.find((g) => g.id === groupId)
+      if (!section || section.sites.length > 0) return
+      const next = customGroups.filter((g) => g.id !== groupId)
+      if (!writeStored(LS_GROUP_CUSTOM, next)) return
+      setCustomGroups(next)
+    },
+    [groups, customGroups],
   )
 
   /* 收藏是搬移不是重复列出，总数照常算 */
@@ -599,8 +679,98 @@ export function useHome() {
     return hits.slice(0, 6)
   }, [query, groups, hitsDismissed])
 
-  const runSearch = useCallback(() => {
+  /* 搜索联想词：打字一停手就去联想接口要词（只等最短的 150 毫秒，图个跟手）；
+     粘的是网址、或刚按 Esc 收起就先不折腾；响应带序号，只认最新一次输入的结果 */
+  const [sugList, setSugList] = useState<string[]>([])
+  const sugSeq = useRef(0)
+  /* 联想缓存（本次打开页面内）：拿过的词都留着，边打字边从旧结果里筛前缀先顶上，
+     删字回退也直接命中——把"每次都干等一趟网络"变成"先有得看、新结果到了再换" */
+  const sugCache = useRef(new Map<string, string[]>())
+  useEffect(() => {
     const q = query.trim()
+    if (!q || looksLikeUrl(q)) {
+      setSugList([])
+      return
+    }
+    const qLower = q.toLowerCase()
+    const norm = (list: string[]) => {
+      const out: string[] = []
+      const seen = new Set<string>()
+      list.forEach((w) => {
+        const t = (w ?? "").trim()
+        const key = t.toLowerCase()
+        if (!t || key === qLower || seen.has(key)) return
+        seen.add(key)
+        out.push(t)
+      })
+      return out.slice(0, 7)
+    }
+    const key = `${engine}|${q}`
+    const exact = sugCache.current.get(key)
+    if (exact) {
+      /* 这个词刚搜过：原样端上来，一次网络都不用跑 */
+      setSugList(exact)
+      return
+    }
+    /* 预热：这个引擎以前拿过的联想里，凡是以当前输入开头的先亮出来（请求还没回，先有得看） */
+    const warm = norm(
+      Array.from(sugCache.current.entries())
+        .filter(([k]) => k.startsWith(`${engine}|`))
+        .flatMap(([, v]) => v),
+    ).filter((w) => w.toLowerCase().startsWith(qLower))
+    if (warm.length > 0) setSugList(warm)
+    const my = (sugSeq.current += 1)
+    const timer = window.setTimeout(() => {
+      void getSuggestions(engine, q).then((list) => {
+        if (sugSeq.current !== my) return
+        const out = norm(list)
+        sugCache.current.set(key, out)
+        /* 只留最近 60 个词的缓存，多了挤掉最旧的，不占地方 */
+        if (sugCache.current.size > 60) {
+          const oldest = sugCache.current.keys().next().value
+          if (oldest !== undefined) sugCache.current.delete(oldest)
+        }
+        setSugList(out)
+      })
+    }, 150)
+    return () => window.clearTimeout(timer)
+  }, [query, engine])
+  /* 和网站候选同一套规则：Esc 收起后，等下一个字才重新冒出来 */
+  const sug = hitsDismissed ? [] : sugList
+
+  /* 最近搜索：打开页面就按"满 30 天清一次"的规矩过滤一遍；
+     同一个词再搜就挪到最前、刷新时间（去重不堆重复行） */
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>(() =>
+    readFreshSearchHistory(),
+  )
+  const pushSearchHistory = useCallback((raw: string, usedEngine: EngineId) => {
+    const q = raw.trim()
+    if (!q) return
+    setSearchHistory((prev) => {
+      const next = [
+        { q, at: Date.now(), engine: usedEngine },
+        ...prev.filter((x) => x.q !== q),
+      ].slice(0, 100)
+      writeStored(LS_SEARCH_HIST, next)
+      return next
+    })
+  }, [])
+  /* 单条删除（记录行上的小叉）和一键清空（浮层表头） */
+  const removeSearchHistory = useCallback((q: string) => {
+    setSearchHistory((prev) => {
+      const next = prev.filter((x) => x.q !== q)
+      writeStored(LS_SEARCH_HIST, next)
+      return next
+    })
+  }, [])
+  const clearSearchHistory = useCallback(() => {
+    setSearchHistory([])
+    writeStored(LS_SEARCH_HIST, [])
+  }, [])
+
+  const runSearch = useCallback((overrideQuery?: string) => {
+    /* 点联想词时会带着那个词进来：不再回读输入框，直接按它出发 */
+    const q = (overrideQuery ?? query).trim()
     if (!q) return
     /* Google搜图模式下贴的是图片网址：不拿它当关键词，直接交给谷歌的"按图搜索"去读图 */
     if (engine === "google-img" && /^https?:\/\//i.test(q)) {
@@ -617,14 +787,16 @@ export function useHome() {
       window.open(url, "_blank", "noopener,noreferrer")
       return
     }
-    /* 对上了自己的网站：回车直接打开第一个候选 */
-    if (siteHits[0]) {
+    /* 对上了自己的网站：回车直接打开第一个候选（点联想词时不抢，按词去搜） */
+    if (!overrideQuery && siteHits[0]) {
       window.open(siteHits[0].url, "_blank", "noopener,noreferrer")
       recordRecent(siteHits[0])
       return
     }
+    /* 真去搜索引擎搜了才记一笔（粘网址直跳、回车直开自己的站都不算搜索，不记） */
+    pushSearchHistory(q, engine)
     window.open(SEARCH_BASE[engine] + encodeURIComponent(q), "_blank", "noopener,noreferrer")
-  }, [query, engine, siteHits, recordRecent])
+  }, [query, engine, siteHits, recordRecent, pushSearchHistory])
 
   const addCustomSite = useCallback(
     (siteName: string, url: string, group: string, icon?: string): boolean => {
@@ -644,6 +816,8 @@ export function useHome() {
       const next = [...customSites, site]
       if (!writeStored(LS_CUSTOM_SITES, next)) return false
       setCustomSites(next)
+      /* 新添加的网站也带一次随机飞入登场（选了飞入动画才算） */
+      markSolo(site.id)
       /* 直接加进收藏栏的个人网址：也记为已收藏（收藏栏只认收藏名单），取消收藏即删 */
       if (group === "fav") {
         const nextFav = [...favoriteIds, site.id]
@@ -652,7 +826,7 @@ export function useHome() {
       }
       return true
     },
-    [customSites, favoriteIds],
+    [customSites, favoriteIds, markSolo],
   )
 
   const openAddSiteForm = useCallback((groupId: string) => {
@@ -841,16 +1015,41 @@ export function useHome() {
   const [helpDismissed, setHelpDismissed] = useState(
     () => readStored<boolean>(LS_POPUP_HELP_OFF, false) === true,
   )
+  /* 「一键打开」自选清单：点卡片勾进来的站点（存 id，站被删了自动忽略） */
+  const [openListIds, setOpenListIds] = useState<string[]>(() =>
+    readStored<string[]>(LS_OPEN_LIST, []),
+  )
+  const toggleOpenList = useCallback(
+    (id: string) => {
+      const next = openListIds.includes(id)
+        ? openListIds.filter((x) => x !== id)
+        : [...openListIds, id]
+      writeStored(LS_OPEN_LIST, next)
+      setOpenListIds(next)
+    },
+    [openListIds],
+  )
+
+  /* 收藏栏的「一键打开」：勾过自选清单就只开勾中的（按勾选顺序），
+     一个没勾就照旧全开收藏。浏览器对"单次点击连开多页"只放行一个，
+     被拦时弹一份分浏览器的放行教程（放行过一次后，以后每次都全开）；
+     教程里点过「不再显示」后就彻底不弹 */
   const openAllFavorites = useCallback(() => {
+    const all = groups.flatMap((g) => g.sites)
+    const byId = new Map(all.map((s) => [s.id, s]))
+    const picked = openListIds
+      .map((id) => byId.get(id))
+      .filter((s): s is Site => Boolean(s))
     const fav = groups.find((g) => g.id === "fav")
-    if (!fav || fav.sites.length === 0) return
+    const toOpen = picked.length > 0 ? picked : fav?.sites ?? []
+    if (toOpen.length === 0) return
     let blocked = 0
-    fav.sites.forEach((s) => {
+    toOpen.forEach((s) => {
       const win = window.open(s.url, "_blank", "noopener,noreferrer")
       if (!win) blocked += 1
     })
     if (blocked > 0 && !helpDismissed) setPopupHelpOpen(true)
-  }, [groups, helpDismissed])
+  }, [groups, helpDismissed, openListIds])
   const closePopupHelp = useCallback(() => setPopupHelpOpen(false), [])
   /* 不再显示：永久记住（本地），弹窗同时关掉 */
   const dismissPopupHelp = useCallback(() => {
@@ -941,6 +1140,7 @@ export function useHome() {
     setQuery,
     dismissSiteHits,
     siteHits,
+    sug,
     modPos,
     setModPos,
     engine,
@@ -954,6 +1154,8 @@ export function useHome() {
     toggleFavorite,
     favoriteIds,
     openAllFavorites,
+    openListIds,
+    toggleOpenList,
     popupHelpOpen,
     closePopupHelp,
     dismissPopupHelp,
@@ -980,6 +1182,9 @@ export function useHome() {
     saveSiteTitle,
     saveGroupTitle,
     moveGroupSection,
+    addGroup,
+    removeGroup,
+    soloIds,
     bgNotice,
     themeHex,
     setThemeColor,
@@ -987,5 +1192,8 @@ export function useHome() {
     editing,
     recent,
     recordRecent,
+    searchHistory,
+    removeSearchHistory,
+    clearSearchHistory,
   }
 }

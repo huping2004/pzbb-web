@@ -12,6 +12,19 @@
           document.documentElement.classList.add("dark")
         }
       } catch (e) {}
+      /* 启动动画·飞入：选了它就在第一帧前挂上标记——开头半秒只见背景全靠
+         这一步抢在内容画出来之前。每次打开/刷新主页都会演（这个脚本只在整页
+         加载时跑，站内跳到回收站再回来不算整页加载、自然不重演）；回收站被
+         直接打开时不挂（没人负责摘标记的话，收尾清理会把它扣成不能滚动）。
+         收尾摘标记由主页负责 */
+      try {
+        if (
+          localStorage.getItem("navhub.intro") === '"flyin"' &&
+          !location.pathname.endsWith("/trash")
+        ) {
+          document.documentElement.classList.add("intro-fly")
+        }
+      } catch (e) {}
     </script>
   </head>
   <body>

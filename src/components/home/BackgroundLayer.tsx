@@ -33,7 +33,7 @@ export function BackgroundLayer({
 
   /* 不能再用负层级：页面底下的兜底底板会把整层背景盖住。抬到 z-0，内容层各自 relative z-10 压在上面 */
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    <div aria-hidden className="intro-bg pointer-events-none fixed inset-0 z-0 overflow-hidden">
       {hasImage && customUrl ? (
         <>
           {/* 用真图片标签而不是 background-image，加载失败时能被接住 */}
