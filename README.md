@@ -29,6 +29,15 @@ npm run build   # 构建产物在 dist/
 
 > 注意：应用使用了前端路由（React Router）。部署到子路径（如 GitHub Pages 项目页）时，需要把 `vite.config.ts` 里的 `base` 设为对应路径，并把 `src/main.tsx` 中 `BrowserRouter` 的 `basename` 设为同一路径；静态托管还要配置 404 回退到 `index.html`，否则刷新子页面会 404。
 
+### 关于搜索联想词
+
+联想词需要**服务端代取**（浏览器直连百度联想接口在多数网络环境里不通），页面只跟自己的站点说话、由后端去问百度：
+
+- **在 RunningHub 平台上预览**：后端路由已内置（`pb_hooks/suggest.pb.js`），开箱即用。
+- **部署到 Vercel**：仓库根目录的 `api/suggest.js` 会被 Vercel 自动识别为一个 Serverless 函数，随前端一起部署、无需额外配置，联想词照常可用。
+- **部署到 Netlify 等其它带函数计算的托管**：把 `api/suggest.js` 挪到该托管约定的函数目录（如 Netlify 的 `netlify/functions/`），路由名保持 `/api/suggest`、返回格式 `{ "words": [...] }` 不变即可。
+- **部署到纯静态托管（GitHub Pages、Nginx 只给静态文件）**：没有可跑函数的后端，联想词会自动退回浏览器直连、通常出不来——这不是坏了，是这类托管没有服务端能力。想要联想词就换 Vercel 这类托管，或自备一个返回 `{ "words": [...] }` 的 `/api/suggest` 接口。
+
 ## 目录结构
 
 ```

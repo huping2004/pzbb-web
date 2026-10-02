@@ -10,13 +10,17 @@ import { getPocketBaseUrl } from "@/lib/pb"
    把请求当一段脚本插进页面，远端把数据装进约定好的函数调用里送回来。
    两条路都不通就安静放弃，顶多不显示联想词，绝不影响正常搜索。 */
 
-/* 首选：问自家后端要词（超时 2 秒，快进快出） */
+/* 首选：问自家后端要词（超时 2 秒，快进快出）。
+   平台预览里后端挂在 __pb 代理后面；独立部署（Vercel 等静态托管）时
+   同源下没有 __pb，改问站点自己的 /api/suggest（Vercel 的 Serverless 函数，见仓库 api/） */
 async function backendSug(q: string): Promise<string[]> {
   const ac = new AbortController()
   const timer = window.setTimeout(() => ac.abort(), 2000)
+  const onVibex = /^\/(?:app-preview|p)\/app-[0-9a-f]{32}(?=\/|$)/.test(window.location.pathname)
+  const base = onVibex ? getPocketBaseUrl() : ""
   try {
     const res = await fetch(
-      `${getPocketBaseUrl()}/api/suggest?q=${encodeURIComponent(q)}`,
+      `${base}/api/suggest?q=${encodeURIComponent(q)}`,
       { signal: ac.signal, headers: getAuthHeaders() },
     )
     if (!res.ok) return []
